@@ -1,6 +1,11 @@
-gtts
-pygame
-streamlit
-speechrecognition
+# Note: You need to install portaudio first:
+# On Ubuntu/Debian: sudo apt-get install portaudio19-dev python3-pyaudio
+# On Windows: pip install pipwin && pipwin install pyaudio
+# On MacOS: brew install portaudio
+
+gtts>=2.3.1
+pygame>=2.5.0
+streamlit>=1.24.0
+SpeechRecognition>=3.10.0
 googletrans==3.1.0
-pyaudio
+pyaudio>=0.2.13
