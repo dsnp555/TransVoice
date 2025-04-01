@@ -1,19 +1,20 @@
 import os
 import time
 import pygame
-from gtts import gTTS
 import streamlit as st
 import speech_recognition as sr
+from gtts import gTTS
 from googletrans import LANGUAGES, Translator
+from io import BytesIO  # For handling in-memory audio playback
 
-# Set page configuration and styling
+# Set page configuration
 st.set_page_config(
     page_title="Real-Time Language Translator",
     page_icon="🌐",
     layout="wide"
 )
 
-# Custom CSS for better styling
+# Apply Custom Styling
 st.markdown("""
 <style>
 .main-header {
@@ -60,12 +61,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Translator setup
+translator = Translator()
 isTranslateOn = False
 
-translator = Translator() # Initialize the translator module.
-pygame.mixer.init()  # Initialize the mixer module.
-
-# Create a mapping between language names and language codes
+# Mapping between language names and codes
 language_mapping = {name: code for code, name in LANGUAGES.items()}
 
 # Initialize conversation history
@@ -76,21 +76,23 @@ def get_language_code(language_name):
     return language_mapping.get(language_name, language_name)
 
 def translator_function(spoken_text, from_language, to_language):
-    return translator.translate(spoken_text, src='{}'.format(from_language), dest='{}'.format(to_language))
+    return translator.translate(spoken_text, src=from_language, dest=to_language)
 
 def text_to_voice(text_data, to_language):
-    myobj = gTTS(text=text_data, lang='{}'.format(to_language), slow=False)
-    myobj.save("cache_file.mp3")
-    audio = pygame.mixer.Sound("cache_file.mp3")  # Load a sound.
-    audio.play()
-    os.remove("cache_file.mp3")
+    """Converts text to speech and returns it as an audio file in memory"""
+    myobj = gTTS(text=text_data, lang=to_language, slow=False)
+    
+    # Store audio in memory instead of saving a file
+    audio_bytes = BytesIO()
+    myobj.write_to_fp(audio_bytes)
+    audio_bytes.seek(0)
+    
+    return audio_bytes
 
 def main_process(output_placeholder, from_language, to_language, from_language_name, to_language_name):
-    
     global isTranslateOn
-    
-    while isTranslateOn:
 
+    while isTranslateOn:
         rec = sr.Recognizer()
         with sr.Microphone() as source:
             output_placeholder.markdown("<div class='status-box'>🎤 Listening...</div>", unsafe_allow_html=True)
@@ -99,7 +101,7 @@ def main_process(output_placeholder, from_language, to_language, from_language_n
         
         try:
             output_placeholder.markdown("<div class='status-box'>⚙️ Processing...</div>", unsafe_allow_html=True)
-            spoken_text = rec.recognize_google(audio, language='{}'.format(from_language))
+            spoken_text = rec.recognize_google(audio, language=from_language)
             
             output_placeholder.markdown("<div class='status-box'>🔄 Translating...</div>", unsafe_allow_html=True)
             translated_text = translator_function(spoken_text, from_language, to_language)
@@ -113,7 +115,9 @@ def main_process(output_placeholder, from_language, to_language, from_language_n
                 "timestamp": time.strftime("%H:%M:%S")
             })
 
-            text_to_voice(translated_text.text, to_language)
+            # Convert to speech and play in Streamlit
+            audio_bytes = text_to_voice(translated_text.text, to_language)
+            st.audio(audio_bytes, format="audio/mp3")
     
         except Exception as e:
             output_placeholder.markdown("<div class='status-box'>❌ Error: Could not process audio. Please try again.</div>", unsafe_allow_html=True)
@@ -121,8 +125,6 @@ def main_process(output_placeholder, from_language, to_language, from_language_n
 
 # UI layout
 st.markdown("<h1 class='main-header'>🌐 Real-Time Language Translator</h1>", unsafe_allow_html=True)
-
-# Add a brief description
 st.markdown("""<div style='text-align: center; margin-bottom: 2rem;'>
     Speak in one language and instantly translate to another! 
     Perfect for conversations across language barriers.
@@ -133,7 +135,6 @@ col1, col2 = st.columns(2)
 
 with st.container():
     st.markdown("<div class='language-section'>", unsafe_allow_html=True)
-    # Dropdowns for selecting languages
     with col1:
         st.markdown("### 🗣️ Source Language")
         from_language_name = st.selectbox("Select the language you'll speak in:", list(LANGUAGES.values()))
@@ -142,12 +143,11 @@ with st.container():
         st.markdown("### 🎯 Target Language")
         to_language_name = st.selectbox("Select the language to translate to:", list(LANGUAGES.values()))
     
-    # Convert language names to language codes
     from_language = get_language_code(from_language_name)
     to_language = get_language_code(to_language_name)
     st.markdown("</div>", unsafe_allow_html=True)
 
-# Button to trigger translation with better styling
+# Buttons for starting and stopping translation
 st.markdown("<div class='button-container'>", unsafe_allow_html=True)
 col3, col4 = st.columns([1, 1])
 with col3:
@@ -159,14 +159,13 @@ st.markdown("</div>", unsafe_allow_html=True)
 # Status placeholder
 status_placeholder = st.empty()
 
-# Check if "Start" button is clicked
+# Handle button clicks
 if start_button:
     if not isTranslateOn:
         isTranslateOn = True
         output_placeholder = st.empty()
         main_process(output_placeholder, from_language, to_language, from_language_name, to_language_name)
 
-# Check if "Stop" button is clicked
 if stop_button:
     isTranslateOn = False
     status_placeholder.markdown("<div class='status-box'>✅ Translation stopped</div>", unsafe_allow_html=True)
@@ -185,8 +184,6 @@ if st.session_state.conversation_history:
 else:
     st.info("📝 No conversation history yet. Start translating to see your conversation here.")
 
-# Add a footer
-# Add a footer with copyright
 st.markdown("""<div style='text-align: center; margin-top: 3rem; padding: 1rem; border-top: 1px solid #90CAF9; color: #757575;'>
-    © 2025 [dsnp01555]. All rights reserved. | 🌐 Real-Time Language Translator | Made using Streamlit
+    © 2025 [Your Name]. All rights reserved. | 🌐 Real-Time Language Translator | Made using Streamlit
 </div>""", unsafe_allow_html=True)
