@@ -4,7 +4,7 @@ import pygame
 import streamlit as st
 import speech_recognition as sr
 from gtts import gTTS
-from googletrans import LANGUAGES, Translator
+from googletrans import Translator
 from io import BytesIO  # For handling in-memory audio playback
 
 # Set page configuration
@@ -63,10 +63,34 @@ st.markdown("""
 
 # Translator setup
 translator = Translator()
-isTranslateOn = False
+languages = {
+    'af': 'afrikaans', 'sq': 'albanian', 'am': 'amharic', 'ar': 'arabic', 'hy': 'armenian',
+    'az': 'azerbaijani', 'eu': 'basque', 'be': 'belarusian', 'bn': 'bengali', 'bs': 'bosnian',
+    'bg': 'bulgarian', 'ca': 'catalan', 'ceb': 'cebuano', 'ny': 'chichewa', 'zh-cn': 'chinese (simplified)',
+    'zh-tw': 'chinese (traditional)', 'co': 'corsican', 'hr': 'croatian', 'cs': 'czech', 'da': 'danish',
+    'nl': 'dutch', 'en': 'english', 'eo': 'esperanto', 'et': 'estonian', 'tl': 'filipino',
+    'fi': 'finnish', 'fr': 'french', 'fy': 'frisian', 'gl': 'galician', 'ka': 'georgian',
+    'de': 'german', 'el': 'greek', 'gu': 'gujarati', 'ht': 'haitian creole', 'ha': 'hausa',
+    'haw': 'hawaiian', 'iw': 'hebrew', 'he': 'hebrew', 'hi': 'hindi', 'hmn': 'hmong',
+    'hu': 'hungarian', 'is': 'icelandic', 'ig': 'igbo', 'id': 'indonesian', 'ga': 'irish',
+    'it': 'italian', 'ja': 'japanese', 'jw': 'javanese', 'kn': 'kannada', 'kk': 'kazakh',
+    'km': 'khmer', 'ko': 'korean', 'ku': 'kurdish (kurmanji)', 'ky': 'kyrgyz', 'lo': 'lao',
+    'la': 'latin', 'lv': 'latvian', 'lt': 'lithuanian', 'lb': 'luxembourgish', 'mk': 'macedonian',
+    'mg': 'malagasy', 'ms': 'malay', 'ml': 'malayalam', 'mt': 'maltese', 'mi': 'maori',
+    'mr': 'marathi', 'mn': 'mongolian', 'my': 'myanmar (burmese)', 'ne': 'nepali', 'no': 'norwegian',
+    'or': 'odia', 'ps': 'pashto', 'fa': 'persian', 'pl': 'polish', 'pt': 'portuguese',
+    'pa': 'punjabi', 'ro': 'romanian', 'ru': 'russian', 'sm': 'samoan', 'gd': 'scots gaelic',
+    'sr': 'serbian', 'st': 'sesotho', 'sn': 'shona', 'sd': 'sindhi', 'si': 'sinhala',
+    'sk': 'slovak', 'sl': 'slovenian', 'so': 'somali', 'es': 'spanish', 'su': 'sundanese',
+    'sw': 'swahili', 'sv': 'swedish', 'tg': 'tajik', 'ta': 'tamil', 'te': 'telugu',
+    'th': 'thai', 'tr': 'turkish', 'uk': 'ukrainian', 'ur': 'urdu', 'ug': 'uyghur',
+    'uz': 'uzbek', 'vi': 'vietnamese', 'cy': 'welsh', 'xh': 'xhosa', 'yi': 'yiddish',
+    'yo': 'yoruba', 'zu': 'zulu'
+}
 
-# Mapping between language names and codes
-language_mapping = {name: code for code, name in LANGUAGES.items()}
+# Update language mapping
+language_mapping = {name: code for code, name in languages.items()}
+isTranslateOn = False
 
 # Initialize conversation history
 if 'conversation_history' not in st.session_state:
@@ -76,7 +100,12 @@ def get_language_code(language_name):
     return language_mapping.get(language_name, language_name)
 
 def translator_function(spoken_text, from_language, to_language):
-    return translator.translate(spoken_text, src=from_language, dest=to_language)
+    try:
+        result = translator.translate(spoken_text, src=from_language, dest=to_language)
+        return result
+    except Exception as e:
+        st.error(f"Translation error: {str(e)}")
+        return None
 
 def text_to_voice(text_data, to_language):
     """Converts text to speech and returns it as an audio file in memory"""
@@ -106,18 +135,19 @@ def main_process(output_placeholder, from_language, to_language, from_language_n
             output_placeholder.markdown("<div class='status-box'>🔄 Translating...</div>", unsafe_allow_html=True)
             translated_text = translator_function(spoken_text, from_language, to_language)
 
-            # Add to conversation history
-            st.session_state.conversation_history.append({
-                "original": spoken_text,
-                "original_language": from_language_name,
-                "translated": translated_text.text,
-                "translated_language": to_language_name,
-                "timestamp": time.strftime("%H:%M:%S")
-            })
+            if translated_text:
+                # Add to conversation history
+                st.session_state.conversation_history.append({
+                    "original": spoken_text,
+                    "original_language": from_language_name,
+                    "translated": translated_text.text,
+                    "translated_language": to_language_name,
+                    "timestamp": time.strftime("%H:%M:%S")
+                })
 
-            # Convert to speech and play in Streamlit
-            audio_bytes = text_to_voice(translated_text.text, to_language)
-            st.audio(audio_bytes, format="audio/mp3")
+                # Convert to speech and play in Streamlit
+                audio_bytes = text_to_voice(translated_text.text, to_language)
+                st.audio(audio_bytes, format="audio/mp3")
     
         except Exception as e:
             output_placeholder.markdown("<div class='status-box'>❌ Error: Could not process audio. Please try again.</div>", unsafe_allow_html=True)
@@ -137,11 +167,11 @@ with st.container():
     st.markdown("<div class='language-section'>", unsafe_allow_html=True)
     with col1:
         st.markdown("### 🗣️ Source Language")
-        from_language_name = st.selectbox("Select the language you'll speak in:", list(LANGUAGES.values()))
+        from_language_name = st.selectbox("Select the language you'll speak in:", list(languages.values()))
     
     with col2:
         st.markdown("### 🎯 Target Language")
-        to_language_name = st.selectbox("Select the language to translate to:", list(LANGUAGES.values()))
+        to_language_name = st.selectbox("Select the language to translate to:", list(languages.values()))
     
     from_language = get_language_code(from_language_name)
     to_language = get_language_code(to_language_name)
