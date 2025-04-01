@@ -11,9 +11,7 @@ SpeechRecognition>=3.10.0
 googletrans==3.1.0a0
 
 # Audio dependencies
-# Install system packages first, then:
-pyaudio>=0.2.13; sys_platform != 'win32'  # For Linux/MacOS
-pyaudio>=0.2.13; sys_platform == 'win32'  # For Windows (install using pipwin)
+pyaudio>=0.2.13
 
 # Optional dependencies for better error logging
 rich>=10.14.0
