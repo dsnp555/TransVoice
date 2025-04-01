@@ -1,11 +1,19 @@
-# Note: You need to install portaudio first:
+# System requirements:
 # On Ubuntu/Debian: sudo apt-get install portaudio19-dev python3-pyaudio
 # On Windows: pip install pipwin && pipwin install pyaudio
 # On MacOS: brew install portaudio
 
+# Core dependencies
 gtts>=2.3.1
 pygame>=2.5.0
 streamlit>=1.24.0
 SpeechRecognition>=3.10.0
 googletrans==3.1.0a0
-pyaudio>=0.2.13
+
+# Audio dependencies
+# Install system packages first, then:
+pyaudio>=0.2.13; sys_platform != 'win32'  # For Linux/MacOS
+pyaudio>=0.2.13; sys_platform == 'win32'  # For Windows (install using pipwin)
+
+# Optional dependencies for better error logging
+rich>=10.14.0
