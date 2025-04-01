@@ -62,7 +62,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Translator setup
-translator = Translator()
+try:
+    translator = Translator()
+    # Test the translator
+    translator.translate('Hello', dest='es')
+except Exception as e:
+    st.error(f"Failed to initialize translator: {str(e)}")
+    translator = None
+
 languages = {
     'af': 'afrikaans', 'sq': 'albanian', 'am': 'amharic', 'ar': 'arabic', 'hy': 'armenian',
     'az': 'azerbaijani', 'eu': 'basque', 'be': 'belarusian', 'bn': 'bengali', 'bs': 'bosnian',
@@ -101,8 +108,20 @@ def get_language_code(language_name):
 
 def translator_function(spoken_text, from_language, to_language):
     try:
-        result = translator.translate(spoken_text, src=from_language, dest=to_language)
-        return result
+        if translator is None:
+            raise Exception("Translator not initialized")
+        
+        # Add retry logic
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                result = translator.translate(spoken_text, src=from_language, dest=to_language)
+                return result
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise e
+                time.sleep(1)  # Wait before retrying
+                
     except Exception as e:
         st.error(f"Translation error: {str(e)}")
         return None
