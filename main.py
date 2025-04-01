@@ -137,17 +137,34 @@ def text_to_voice(text_data, to_language):
     
     return audio_bytes
 
+def initialize_microphone():
+    """Initialize and test microphone access"""
+    try:
+        rec = sr.Recognizer()
+        with sr.Microphone() as source:
+            return True, rec, None
+    except OSError as e:
+        return False, None, "No microphone device found. Please check your microphone connection and system audio settings."
+    except Exception as e:
+        return False, None, f"Error initializing microphone: {str(e)}"
+
 def main_process(output_placeholder, from_language, to_language, from_language_name, to_language_name):
     global isTranslateOn
 
+    # Check microphone before starting
+    mic_ok, rec, error_msg = initialize_microphone()
+    if not mic_ok:
+        output_placeholder.error(error_msg)
+        isTranslateOn = False
+        return
+
     while isTranslateOn:
-        rec = sr.Recognizer()
-        with sr.Microphone() as source:
-            output_placeholder.markdown("<div class='status-box'>🎤 Listening...</div>", unsafe_allow_html=True)
-            rec.pause_threshold = 1
-            audio = rec.listen(source, phrase_time_limit=10)
-        
         try:
+            with sr.Microphone() as source:
+                output_placeholder.markdown("<div class='status-box'>🎤 Listening...</div>", unsafe_allow_html=True)
+                rec.pause_threshold = 1
+                audio = rec.listen(source, phrase_time_limit=10)
+            
             output_placeholder.markdown("<div class='status-box'>⚙️ Processing...</div>", unsafe_allow_html=True)
             spoken_text = rec.recognize_google(audio, language=from_language)
             
@@ -168,6 +185,10 @@ def main_process(output_placeholder, from_language, to_language, from_language_n
                 audio_bytes = text_to_voice(translated_text.text, to_language)
                 st.audio(audio_bytes, format="audio/mp3")
     
+        except OSError as e:
+            output_placeholder.error("Microphone error: Please check your microphone connection")
+            isTranslateOn = False
+            break
         except Exception as e:
             output_placeholder.markdown("<div class='status-box'>❌ Error: Could not process audio. Please try again.</div>", unsafe_allow_html=True)
             print(e)
